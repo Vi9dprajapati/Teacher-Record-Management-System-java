@@ -47,61 +47,79 @@ public class LoginFrame extends JFrame {
         loginBtn.setBounds(140, 190, 100, 35);
         add(loginBtn);
 
-        loginBtn.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                login();
-            }
-        });
+        loginBtn.addActionListener(e -> login());
 
         setVisible(true);
     }
 
     // 🔹 Login Method
     void login() {
-        String email = emailField.getText();
-        String password = new String(passwordField.getPassword());
+
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword()).trim();
         String role = roleBox.getSelectedItem().toString();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill all fields ❗");
+            return;
+        }
 
         try {
             Connection con = DBConnection.getConnection();
             PreparedStatement ps;
 
             if (role.equals("Admin")) {
+
                 ps = con.prepareStatement(
                         "SELECT * FROM admin WHERE email=? AND password=?");
-            } else {
-                ps = con.prepareStatement(
-                        "SELECT * FROM hod WHERE email=? AND password=?");
-            }
 
-            ps.setString(1, email);
-            ps.setString(2, password);
+                ps.setString(1, email);
+                ps.setString(2, password);
 
-            ResultSet rs = ps.executeQuery();
+                ResultSet rs = ps.executeQuery();
 
-            if (rs.next()) {
-                JOptionPane.showMessageDialog(this, "Login Success ✅");
-
-                if (role.equals("Admin")) {
+                if (rs.next()) {
+                    JOptionPane.showMessageDialog(this, "Admin Login Success ✅");
                     new AdminDashboard();
+                    dispose();
                 } else {
-                    String dept = rs.getString("department");
-                    new HodDashboard(dept);
+                    JOptionPane.showMessageDialog(this, "Invalid Admin Credentials ❌");
                 }
 
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Invalid Credentials ❌");
+            } else {  // 🔥 HOD LOGIN
+
+                ps = con.prepareStatement(
+                        "SELECT hod_id, department FROM hod WHERE email=? AND password=?");
+
+                ps.setString(1, email);
+                ps.setString(2, password);
+
+                ResultSet rs = ps.executeQuery();
+
+                if (rs.next()) {
+
+                    int hodId = rs.getInt("hod_id");       // 🔥 IMPORTANT
+                    String dept = rs.getString("department");
+
+                    JOptionPane.showMessageDialog(this, "HOD Login Success ✅");
+
+                    new HodDashboard(dept, hodId);   // 🔥 FIXED
+                    dispose();
+
+                } else {
+                    JOptionPane.showMessageDialog(this, "Invalid HOD Credentials ❌");
+                }
             }
 
             con.close();
 
         } catch (Exception ex) {
             ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database Error ❌");
         }
     }
 
-    // 🔥 MAIN METHOD (IMPORTANT)
+    // 🔥 MAIN METHOD
     public static void main(String[] args) {
         new LoginFrame();
     }
